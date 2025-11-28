@@ -1,17 +1,23 @@
 import express from "express";
 import { WebSocketServer } from "ws";
 
-const PORT = process.env.PORT || 3000;
+// Get the PORT environment variable as an integer.
+// Use 3000 as a default for local testing if the environment variable isn't set.
+const PORT_STR = process.env.PORT;
+const PORT = parseInt(PORT_STR) || 3000; 
 
-// Basic express server (keeps Render happy)
+// Basic express server to handle HTTP requests (and keep Render happy)
 const app = express();
 app.get("/", (req, res) => res.send("WiFi Car Relay WebSocket Server Running!"));
+// The express app must listen on the primary PORT
 app.listen(PORT, () => console.log(`HTTP Server running on port: ${PORT}`)); 
 
-// WebSocket Relay - Runs on PORT + 1
-const wss = new WebSocketServer({ port: PORT + 1 });
+// WebSocket Relay - Runs on PORT + 1. 
+// Now that PORT is an integer, this will calculate correctly (e.g., 10000 + 1 = 10001).
+const WS_PORT = PORT + 1;
+const wss = new WebSocketServer({ port: WS_PORT });
 
-let espClient = null; // Stores the single ESP8266 client connection
+let espClient = null; 
 
 wss.on("connection", ws => {
     console.log("Client connected");
@@ -20,17 +26,14 @@ wss.on("connection", ws => {
         const data = msg.toString();
 
         if (data === "ESP_CONNECT") {
-            // ESP is identifying itself
             espClient = ws;
             console.log("ESP Connected");
             return;
         }
 
-        // --- THE RELAY ---
-        // UI sends command (new JSON format) -> Relay to ESP
+        // Forward the control command to the ESP client
         if (espClient && espClient.readyState === 1) {
-            // Forward the received message (data) directly to the ESP client
-            espClient.send(data); 
+            espClient.send(data);
         }
     });
 
@@ -40,4 +43,4 @@ wss.on("connection", ws => {
     });
 });
 
-console.log("WebSocket Relay initialized on port", PORT + 1);
+console.log("WebSocket Relay initialized on port", WS_PORT);
