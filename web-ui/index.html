@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RC Car Controller (Dual Mode)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <style>
+    /* Global Styles */
+    body {
+      margin: 0; padding: 20px;
+      background-color: #1a1a2e; color: #eee;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; box-sizing: border-box;
+      touch-action: none;
+    }
+    h2 { margin-bottom: 20px; color: #e94560; background: #0f3460; padding: 5px 20px; border-radius: 15px; }
+    .mode-toggle {
+        padding: 10px 20px;
+        background-color: #e94560;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 30px;
+        font-size: 16px;
+    }
+    .control-mode {
+        display: none; /* Hidden by default */
+        width: 100%;
+        max-width: 900px;
+    }
+
+    /* --- Mode 1: Simple Button Layout (Frame 1 Style) --- */
+    #mode1-simple-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 20px;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    .simple-btn {
+        padding: 20px 10px;
+        background-color: #16213e;
+        border: 2px solid #0f3460;
+        border-radius: 10px;
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        text-align: center;
+        user-select: none;
+        cursor: pointer;
+        transition: 0.1s;
+    }
+    #stop-btn { background-color: #d32f2f; }
+    .simple-btn:active { transform: scale(0.95); box-shadow: 0 0 10px #e94560; }
+
+
+    /* --- Mode 2: Steering Wheel Layout (Frame 2 Style) --- */
+    .dashboard-container {
+        display: flex; flex-direction: row; justify-content: space-around;
+        align-items: center; width: 100%; max-width: 900px; flex-grow: 1;
+        gap: 20px;
+    }
+    .wheel-container { width: 250px; height: 250px; position: relative; }
+    #steeringWheel {
+        width: 100%; height: 100%;
+        background: radial-gradient(circle at center, #333 30%, #111 31%, #111 50%, #555 51%, #222 70%);
+        border-radius: 50%; border: 8px solid #0f3460; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        transform-origin: center; transition: transform 0.05s ease-out;
+        display: flex; justify-content: center; align-items: center; cursor: grab;
+    }
+    #steeringWheel::after { content: ''; position: absolute; width: 60px; height: 60px; background: #e94560; border-radius: 50%; }
+    .spoke { position: absolute; background: #222; z-index: 0;}
+    .spoke.horiz { width: 90%; height: 10px; top: calc(50% - 5px); left: 5%; border-radius: 5px;}
+    .spoke.vert { height: 45%; width: 10px; bottom: 5%; left: calc(50% - 5px); border-radius: 5px;}
+
+    .controls-section { 
+        display: flex; flex-direction: column; align-items: center; gap: 30px; 
+        min-width: 200px;
+    }
+    .gear-shifter { display: flex; background: #16213e; border-radius: 10px; overflow: hidden; border: 2px solid #0f3460; box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+    .gear-btn { padding: 15px 30px; font-size: 24px; font-weight: bold; cursor: pointer; transition: 0.3s; user-select: none; }
+    .gear-active { background: #e94560; color: white; } 
+    .gear-inactive { background: #16213e; color: #666; }
+
+    .pedal-container { display: flex; gap: 20px; }
+    .pedal {
+        width: 100px; height: 160px; border-radius: 15px;
+        display: flex; justify-content: center; align-items: flex-end; padding-bottom: 25px;
+        font-weight: bold; font-size: 18px; user-select: none;
+        box-shadow: inset 0 -5px 10px rgba(0,0,0,0.5); border: 3px solid #333;
+        transition: transform 0.1s ease-out, background 0.1s ease-out;
+        cursor: pointer;
+    }
+    #brakePedal { background: linear-gradient(to bottom, #555, #d32f2f); color: white; order: 1;}
+    #gasPedal { background: linear-gradient(to bottom, #555, #2e7d32); color: white; order: 2;}
+    .pedal:active { transform: scale(0.95); box-shadow: inset 0 -2px 5px rgba(0,0,0,0.7); }
+    #brakePedal:active { background: linear-gradient(to bottom, #333, #b71c1c); }
+    #gasPedal:active { background: linear-gradient(to bottom, #333, #1b5e20); }
+
+    /* Status */
+    #status { margin-top: 30px; font-size: 1.1em; padding: 10px 20px; border-radius: 10px; background-color: #0f3460; }
+
+  </style>
+</head>
+<body>
+  <h2>RC COMMAND CENTER</h2>
+  <button id="modeToggleBtn" class="mode-toggle">Switch to Simple Buttons (Mode 1)</button>
+
+  <div id="mode2" class="control-mode dashboard-container">
+    <div class="wheel-container" id="wheelArea">
+      <div id="steeringWheel">
+          <div class="spoke horiz"></div>
+          <div class="spoke vert"></div>
+      </div>
+    </div>
+    <div class="controls-section">
+      <div class="gear-shifter">
+        <div id="gearF" class="gear-btn gear-active">F</div>
+        <div id="gearR" class="gear-btn gear-inactive">R</div>
+      </div>
+      <div class="pedal-container">
+        <div id="brakePedal" class="pedal">BRAKE</div>
+        <div id="gasPedal" class="pedal">GAS</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mode1" class="control-mode">
+    <div id="mode1-simple-buttons">
+      <div class="simple-btn" id="empty-1"></div>
+      <div class="simple-btn" data-cmd="F">FORWARD</div>
+      <div class="simple-btn" id="empty-2"></div>
+      <div class="simple-btn" data-cmd="L">LEFT</div>
+      <div class="simple-btn" id="stop-btn" data-cmd="S">STOP</div>
+      <div class="simple-btn" data-cmd="R">RIGHT</div>
+      <div class="simple-btn" id="empty-3"></div>
+      <div class="simple-btn" data-cmd="B">BACKWARD</div>
+      <div class="simple-btn" id="empty-4"></div>
+    </div>
+  </div>
+
+  <div id="status">Connecting...</div>
+
+<script>
+  // ================= JAVASCRIPT LOGIC =================
+  const RENDER_APP_DOMAIN = "your-app-name.onrender.com"; 
+  const WS_PORT = 10001;
+  const WS_URL = `wss://${RENDER_APP_DOMAIN}:${WS_PORT}`; 
+  
+  let ws = null;
+  const statusElement = document.getElementById("status");
+  
+  // State for Mode 2 (Steering Wheel)
+  let currentSteerAngle = 0;   // -90 to +90 degrees
+  let currentThrottle = 0;     // 0 to 255
+  let isForward = true;
+  let isBraking = false;
+  
+  // State for Mode 1 (Simple Buttons)
+  let activeMode = 2; // Default to Mode 2 (Steering Wheel)
+  let simpleDirection = 'S'; // F, B, L, R, S
+
+  // --- Initial Setup ---
+  function initWebSocket() {
+      statusElement.textContent = "Connecting...";
+      statusElement.style.color = 'orange';
+
+      ws = new WebSocket(WS_URL);
+      
+      ws.onopen = () => {
+          console.log("WebSocket Connected to Render Relay");
+          statusElement.textContent = "Status: CONNECTED";
+          statusElement.style.color = 'lightgreen';
+          toggleMode(activeMode); // Ensure the correct UI is visible after connection
+      };
+      
+      ws.onclose = () => {
+          statusElement.textContent = "Status: DISCONNECTED (Reconnecting...)";
+          statusElement.style.color = 'orange';
+          setTimeout(initWebSocket, 3000); 
+      };
+      
+      ws.onerror = (error) => {
+          console.error("WebSocket Error:", error);
+          statusElement.textContent = "Status: ERROR";
+          statusElement.style.color = 'red';
+      };
+  }
+  
+  initWebSocket();
+
+  // --- Command Sending Loop ---
+  setInterval(function() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+          let command;
+          
+          if (activeMode === 2) {
+              // MODE 2: Steering Wheel (Complex JSON)
+              command = {
+                  mode: 2,
+                  angle: Math.round(currentSteerAngle),
+                  throttle: currentThrottle,
+                  isForward: isForward,
+                  isBraking: isBraking
+              };
+          } else {
+              // MODE 1: Simple Buttons (Directional JSON)
+              command = {
+                  mode: 1,
+                  dir: simpleDirection,
+              };
+          }
+
+          ws.send(JSON.stringify(command));
+      }
+  }, 50);
+
+  // --- Mode Toggle Logic ---
+  const modeToggleBtn = document.getElementById('modeToggleBtn');
+  const mode1 = document.getElementById('mode1');
+  const mode2 = document.getElementById('mode2');
+
+  function toggleMode(mode) {
+      activeMode = mode;
+      
+      if (mode === 1) {
+          mode2.style.display = 'none';
+          mode1.style.display = 'block';
+          modeToggleBtn.textContent = 'Switch to Steering Wheel (Mode 2)';
+          // Reset continuous controls when switching to simple mode
+          currentThrottle = 0; 
+          isBraking = false;
+      } else {
+          mode1.style.display = 'none';
+          mode2.style.display = 'flex';
+          modeToggleBtn.textContent = 'Switch to Simple Buttons (Mode 1)';
+          // Reset simple control when switching to continuous mode
+          simpleDirection = 'S'; 
+      }
+  }
+
+  modeToggleBtn.addEventListener('click', () => {
+      toggleMode(activeMode === 1 ? 2 : 1);
+  });
+  
+  // --- Mode 1 Simple Button Handlers ---
+  document.querySelectorAll('#mode1-simple-buttons .simple-btn[data-cmd]').forEach(button => {
+      button.addEventListener('pointerdown', function() {
+          simpleDirection = this.getAttribute('data-cmd');
+      });
+      button.addEventListener('pointerup', function() {
+          if (simpleDirection !== 'S') { // Keep stop active if S was pressed
+            simpleDirection = 'S';
+          }
+      });
+  });
+
+
+  // --- Mode 2 Steering Wheel Handlers (as before) ---
+  const wheel = document.getElementById('steeringWheel');
+  const wheelArea = document.getElementById('wheelArea');
+  let isDragging = false;
+  
+  wheelArea.addEventListener('pointerdown', (e) => { 
+      isDragging = true; 
+      wheel.setPointerCapture(e.pointerId);
+      updateWheel(e); 
+  });
+  document.addEventListener('pointerup', () => { 
+      isDragging = false; 
+      resetWheel(); 
+  });
+  wheelArea.addEventListener('pointermove', (e) => { if (isDragging && activeMode === 2) updateWheel(e); });
+
+  function updateWheel(e) {
+      const rect = wheelArea.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const x = e.clientX - centerX;
+      const y = e.clientY - centerY;
+      let angleDeg = Math.atan2(y, x) * (180 / Math.PI) + 90;
+      if(angleDeg > 180) angleDeg -= 360;
+      
+      currentSteerAngle = Math.max(-90, Math.min(90, angleDeg));
+      wheel.style.transform = `rotate(${currentSteerAngle}deg)`;
+  }
+
+  function resetWheel() {
+      currentSteerAngle = 0;
+      wheel.style.transform = `rotate(0deg)`;
+  }
+
+  // Pedal Logic
+  const gasBtn = document.getElementById('gasPedal');
+  const brakeBtn = document.getElementById('brakePedal');
+
+  gasBtn.addEventListener('pointerdown', () => { currentThrottle = 255; });
+  gasBtn.addEventListener('pointerup', () => { currentThrottle = 0; });
+  gasBtn.addEventListener('pointerleave', (e) => { if (e.buttons === 0) currentThrottle = 0; });
+  
+  brakeBtn.addEventListener('pointerdown', () => { isBraking = true; currentThrottle = 0; });
+  brakeBtn.addEventListener('pointerup', () => { isBraking = false; });
+  brakeBtn.addEventListener('pointerleave', (e) => { if (e.buttons === 0) isBraking = false; });
+
+  // Gear Logic
+  const gearF = document.getElementById('gearF');
+  const gearR = document.getElementById('gearR');
+
+  gearF.addEventListener('click', () => {
+       isForward = true;
+       gearF.className = "gear-btn gear-active";
+       gearR.className = "gear-btn gear-inactive";
+  });
+
+  gearR.addEventListener('click', () => {
+       isForward = false;
+       gearR.className = "gear-btn gear-active";
+       gearF.className = "gear-btn gear-inactive";
+  });
+</script>
+</body>
+</html>
